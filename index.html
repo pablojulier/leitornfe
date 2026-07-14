@@ -306,8 +306,7 @@
 <header>
   <div class="eyebrow">DANFE · Código de barras · Chave de acesso</div>
   <h1>Leitor de Chaves NF-e</h1>
-  <p class="subtitle">Envie as imagens dos DANFEs. O leitor localiza a chave de 44 dígitos logo abaixo do código de barras, gira a imagem quando necessário e só apresenta uma chave depois de confirmá-la pelo dígito verificador oficial (módulo 11). Se a leitura não puder ser confirmada com segurança, a nota é sinalizada como erro — nenhum dígito é adivinhado.</p>
-  <p class="subtitle" style="margin-top:10px;"><strong>Dica:</strong> se aparecer erro ao carregar o motor de OCR dentro da pré-visualização do chat, baixe este arquivo e abra-o direto no seu navegador (duplo clique) — a rede do seu computador não tem a mesma restrição do painel de pré-visualização.</p>
+  <p class="subtitle">Em Teste use com cautela* - Envie as imagens dos DANFEs. O leitor localiza a chave de 44 dígitos, realiza rotações de segurança e valida tanto o dígito verificador quanto a integridade real do CNPJ emissor e a data de emissão para descartar falsos positivos.</p>
 </header>
 
 <section class="intake">
@@ -356,7 +355,7 @@
 <section class="results" id="results"></section>
 
 <section class="method-note">
-  Como funciona a verificação: os 43 primeiros dígitos de toda chave de NF-e determinam matematicamente o 44º dígito (o dígito verificador), pelo algoritmo módulo 11 definido pela SEFAZ. Uma chave só é aceita aqui se essa conta bater — por isso a leitura é confiável mesmo quando a imagem está torta, com pouca luz ou baixa resolução: se o OCR errar um dígito, a verificação falha e a nota vai para "erro" em vez de mostrar um número incorreto.
+  Como funciona a verificação: os 43 primeiros dígitos de toda chave de NF-e determinam matematicamente o 44º dígito (o dígito verificador), pelo algoritmo módulo 11 definido pela SEFAZ. Adicionalmente, o CNPJ interno do emissor (dígitos 7 a 20) é validado pelos seus próprios dígitos verificadores. Qualquer falha de estrutura ou data impossível descarta a chave.
 </section>
 
 <div class="toast" id="toast"></div>
@@ -385,12 +384,11 @@
   const resultsEl = document.getElementById('results');
   const toastEl = document.getElementById('toast');
 
-  let queue = [];      // File objects waiting to be processed
-  let results = [];    // processed result objects
+  let queue = [];      
+  let results = [];    
   let worker = null;
   let processing = false;
 
-  // ---------- File queue handling ----------
   function addFiles(fileList){
     const arr = Array.from(fileList).filter(f => f.type.startsWith('image/'));
     queue = queue.concat(arr);
@@ -435,9 +433,67 @@
     engineStatus.textContent = '';
   });
 
-  // ---------- NF-e key validation (módulo 11 oficial) ----------
+  // VALIDAÇÃO ESTRUTURAL DO CNPJ (Módulo 11 oficial de 14 dígitos)
+  function validarCNPJ(cnpj) {
+    if (!cnpj || cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
+    
+    // Validar primeiro dígito verificador
+    let tamanho = cnpj.length - 2;
+    let numeros = cnpj.substring(0, tamanho);
+    let digitos = cnpj.substring(tamanho);
+    let soma = 0;
+    let pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i), 10) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado !== parseInt(digitos.charAt(0), 10)) return false;
+    
+    // Validar segundo dígito verificador
+    tamanho = tamanho + 1;
+    numeros = cnpj.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i), 10) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado !== parseInt(digitos.charAt(1), 10)) return false;
+    
+    return true;
+  }
+
+  // VALIDAÇÃO: CNPJ + Módulo 11 + Filtro estrito de data futura impossível
   function validarChaveNFe(chave){
     if (!/^\d{44}$/.test(chave)) return false;
+
+    // 1. Validar integridade estrutural do CNPJ embutido na chave (dígitos 7 a 20)
+    const cnpjInChave = chave.slice(6, 20);
+    if (!validarCNPJ(cnpjInChave)) return false;
+    
+    // 2. Validar ano e mês (AAMM na chave começa na posição index 2 até 6)
+    const aaStr = chave.slice(2, 4);
+    const mmStr = chave.slice(4, 6);
+    const anoChave = parseInt("20" + aaStr, 10);
+    const mesChave = parseInt(mmStr, 10);
+    
+    if (mesChave < 1 || mesChave > 12) return false;
+    
+    // Pega a data atual do sistema do usuário
+    const hoje = new Date();
+    const anoAtual = hoje.getFullYear();
+    const mesAtual = hoje.getMonth() + 1; // 0-based
+    
+    // Bloqueia se o ano for maior que o atual ou se for o ano atual mas mês futuro
+    if (anoChave > anoAtual) return false;
+    if (anoChave === anoAtual && mesChave > mesAtual) return false;
+    
+    // Bloqueia notas excessivamente antigas de forma razoável (ex: antes de 2005, início da NFe)
+    if (anoChave < 2005) return false;
+
+    // 3. Validação matemática do dígito verificador geral
     const base = chave.slice(0,43);
     const dvInformado = parseInt(chave[43],10);
     let soma = 0, peso = 2;
@@ -472,7 +528,6 @@
     return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
   }
 
-  // ---------- OCR candidate extraction ----------
   function extractCandidates(text){
     const groups = text.split(/[^\d]+/).filter(Boolean);
     const candidates = new Set();
@@ -488,7 +543,6 @@
     return Array.from(candidates);
   }
 
-  // ---------- Image preprocessing (rotation + contrast) ----------
   function loadImage(file){
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
@@ -505,8 +559,8 @@
     const w = img.width, h = img.height;
     let scale = 1;
     const maxDim = Math.max(w,h);
-    if (maxDim < 1500) scale = 1500 / maxDim;
-    if (scale > 2.2) scale = 2.2;
+    if (maxDim < 1800) scale = 1800 / maxDim;
+    if (scale > 2.5) scale = 2.5;
     const cw = Math.round((swap ? h : w) * scale);
     const ch = Math.round((swap ? w : h) * scale);
     const canvas = document.createElement('canvas');
@@ -514,7 +568,7 @@
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#fff';
     ctx.fillRect(0,0,cw,ch);
-    ctx.filter = 'grayscale(1) contrast(1.35) brightness(1.05)';
+    ctx.filter = 'grayscale(1) contrast(1.4) brightness(1.02)';
     ctx.translate(cw/2, ch/2);
     ctx.rotate(rad);
     ctx.scale(scale, scale);
@@ -533,7 +587,6 @@
     return canvas.toDataURL('image/jpeg', 0.72);
   }
 
-  // ---------- Core per-image processing ----------
   async function processOneImage(file){
     const { img, url } = await loadImage(file);
     const thumb = makeThumb(img);
@@ -553,17 +606,25 @@
       }catch(err){
         continue;
       }
+      
       const digitsOnly = text.replace(/[^\d]/g,'');
-      if (digitsOnly.length > bestRawLen){ bestRawLen = digitsOnly.length; bestRaw = digitsOnly; }
+      if (digitsOnly.length > bestRawLen){ 
+        bestRawLen = digitsOnly.length; 
+        bestRaw = digitsOnly; 
+      }
+
+      // Validação anti-ruído
+      if (digitsOnly.length < 38 || digitsOnly.length > 250) {
+        continue;
+      }
 
       const candidates = extractCandidates(text);
       const valid = [...new Set(candidates.filter(validarChaveNFe))];
+      
       if (valid.length === 1){
         foundKey = valid[0];
         break;
       }
-      // se houver mais de uma candidata válida e diferente entre si nesta mesma
-      // passagem, é ambíguo — não aceitamos, seguimos tentando outros ângulos
     }
 
     if (foundKey){
@@ -587,20 +648,19 @@
     }
   }
 
-  // ---------- Worker setup ----------
   async function ensureWorker(){
     if (worker) return worker;
     if (typeof Tesseract === 'undefined'){
-      throw new Error('O arquivo do motor de OCR (tesseract.min.js) não carregou — o script foi bloqueado antes mesmo de rodar.');
+      throw new Error('O arquivo do motor de OCR não carregou.');
     }
-    engineStatus.textContent = 'Carregando motor de OCR (pode levar alguns segundos na primeira vez)…';
+    engineStatus.textContent = 'Carregando motor de OCR…';
     const createPromise = Tesseract.createWorker('eng', 1, {
       workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js' + '@5.1.1/dist/worker.min.js',
       corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core' + '@5.1.1',
       langPath: 'https://tessdata.projectnaptha.com/4.0.0',
       logger: () => {},
     });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo esgotado baixando os arquivos do motor de OCR (rede bloqueada ou muito lenta).')), 25000));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite excedido')), 25000));
     worker = await Promise.race([createPromise, timeoutPromise]);
     await worker.setParameters({
       tessedit_char_whitelist: '0123456789',
@@ -610,7 +670,6 @@
     return worker;
   }
 
-  // ---------- Process button ----------
   processBtn.addEventListener('click', async () => {
     if (processing || queue.length === 0) return;
     processing = true;
@@ -621,10 +680,7 @@
       await ensureWorker();
     }catch(err){
       const detail = (err && err.message) ? err.message : String(err);
-      engineStatus.innerHTML =
-        `Não foi possível carregar o motor de OCR.<br>Detalhe técnico: ${escapeHtml(detail)}<br><br>` +
-        `Se você está vendo isto na pré-visualização dentro do chat, a rede desse painel costuma bloquear o download do motor de OCR (arquivo grande, hospedado em CDN). ` +
-        `<strong>Baixe o arquivo .html e abra-o diretamente no seu navegador</strong> (fora do chat) — lá a internet normal do seu computador é usada e o carregamento funciona.`;
+      engineStatus.innerHTML = `Falha ao iniciar OCR: ${escapeHtml(detail)}. Abra fora do chat se necessário.`;
       processing = false;
       processBtn.disabled = queue.length === 0;
       clearBtn.disabled = false;
@@ -641,11 +697,11 @@
 
     for (let i = 0; i < toProcess.length; i++){
       const file = toProcess[i];
-      progressLabel.textContent = `Processando ${i+1} de ${toProcess.length} — ${file.name}`;
+      progressLabel.textContent = `Lendo ${i+1} de ${toProcess.length} — ${file.name}`;
       progressFill.style.width = Math.round(((i)/toProcess.length)*100) + '%';
 
       const placeholderId = 'card-' + i + '-' + Date.now();
-      renderProcessingCard(placeholderId, file.name, i);
+      renderProcessingCard(placeholderId, file.name);
 
       let res;
       try{
@@ -658,7 +714,7 @@
       progressFill.style.width = Math.round(((i+1)/toProcess.length)*100) + '%';
     }
 
-    progressLabel.textContent = `Concluído — ${toProcess.length} nota(s) processada(s).`;
+    progressLabel.textContent = `Leitura concluída.`;
     setTimeout(() => { progressWrap.style.display = 'none'; }, 1200);
 
     markDuplicates();
@@ -670,7 +726,7 @@
     clearBtn.disabled = false;
   });
 
-  function renderProcessingCard(id, fileName, index){
+  function renderProcessingCard(id, fileName){
     const card = document.createElement('article');
     card.className = 'card status-processing';
     card.id = id;
@@ -681,7 +737,7 @@
           <span class="filename">${escapeHtml(fileName)}</span>
           <span class="badge badge-processing">Lendo…</span>
         </div>
-        <div class="key-strip">Girando a imagem e procurando a chave…</div>
+        <div class="key-strip">Processando imagem e buscando a chave…</div>
       </div>`;
     resultsEl.appendChild(card);
   }
@@ -729,15 +785,12 @@
           <span>CNPJ <strong>${formatarCNPJ(p.cnpj)}</strong></span>
         </div>`;
         if (r.duplicate){
-          dupHtml = `<div class="dup-note">Mesma chave também encontrada em: ${r.duplicateGroup.map(escapeHtml).join(', ')}. Só uma cópia dessa chave entra em "Copiar todas".</div>`;
+          dupHtml = `<div class="dup-note">Mesma chave também encontrada em: ${r.duplicateGroup.map(escapeHtml).join(', ')}.</div>`;
         }
         actionsHtml = `<div class="card-actions"><button class="btn-copy" data-key="${r.key}">Copiar chave</button></div>`;
       } else {
         badge = '<span class="badge badge-error">Erro na leitura</span>';
-        const rawMsg = r.rawLen >= 30
-          ? `<span class="raw-hint">Melhor trecho encontrado (não confirmado, ${r.rawLen} dígitos) — não copiado automaticamente.</span>`
-          : `<span class="raw-hint">Poucos dígitos legíveis nesta imagem.</span>`;
-        keyStripHtml = `<div class="key-strip error">Não foi possível confirmar a chave desta nota com segurança (o dígito verificador não bateu em nenhuma rotação testada). Tente reenviar com melhor resolução ou iluminação.${rawMsg}</div>`;
+        keyStripHtml = `<div class="key-strip error">Não foi possível ler uma chave válida nesta imagem. Chaves inexistentes ou com CNPJ/datas inválidas foram descartadas automaticamente.</div>`;
         actionsHtml = `<div class="card-actions"><button class="btn-copy" disabled>Copiar chave</button></div>`;
       }
 
@@ -814,14 +867,13 @@
       }
     });
     if (!lines.length){
-      showToast('Nenhuma chave validada para copiar.');
+      showToast('Nenhuma chave para copiar.');
       return;
     }
     copyText(lines.join('\n'));
-    showToast(`${lines.length} chave(s) única(s) copiada(s).`);
+    showToast(`${lines.length} chave(s) copiada(s).`);
   });
 
-  // ---------- Clipboard helpers ----------
   function copyText(text){
     if (navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
