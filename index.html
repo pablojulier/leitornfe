@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ocrad.js@0.0.1/ocrad.js"></script>
 <style>
   :root{
     --paper:#F5F1E6;
@@ -32,266 +34,140 @@
   body{
     margin:0;
     background:var(--paper);
-    background-image:
-      radial-gradient(circle at 1px 1px, rgba(30,40,54,0.05) 1px, transparent 0);
+    background-image:radial-gradient(circle at 1px 1px, rgba(30,40,54,0.05) 1px, transparent 0);
     background-size:22px 22px;
     color:var(--ink);
     font-family:'Inter',system-ui,sans-serif;
     line-height:1.5;
     padding:0 0 80px;
   }
-  .wrap{max-width:920px;margin:0 auto;padding:0 20px;}
-
-  header{
-    padding:48px 20px 32px;
-    max-width:920px;
-    margin:0 auto;
-  }
+  header{padding:48px 20px 20px;max-width:920px;margin:0 auto;}
   .eyebrow{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:var(--navy);
-    display:flex;
-    align-items:center;
-    gap:10px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--navy);display:flex;align-items:center;gap:10px;
   }
-  .eyebrow::before{
-    content:"";
-    display:inline-block;
-    width:26px;height:1px;background:var(--navy);
+  .eyebrow::before{content:"";display:inline-block;width:26px;height:1px;background:var(--navy);}
+  h1{font-family:'Zilla Slab',serif;font-weight:700;font-size:40px;margin:14px 0 10px;color:var(--navy-deep);}
+  .subtitle{max-width:660px;color:var(--ink-soft);font-size:15px;}
+  .subtitle strong{color:var(--ink);}
+
+  .pipeline{
+    max-width:920px;margin:18px auto 0;padding:16px 20px;
   }
-  h1{
-    font-family:'Zilla Slab',serif;
-    font-weight:700;
-    font-size:40px;
-    margin:14px 0 10px;
-    color:var(--navy-deep);
+  .pipeline-strip{
+    display:flex;flex-wrap:wrap;gap:6px;
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);
+    background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;
   }
-  .subtitle{
-    max-width:640px;
-    color:var(--ink-soft);
-    font-size:15.5px;
-  }
+  .pipeline-strip span{white-space:nowrap;}
+  .pipeline-strip span.arrow{color:var(--line);}
 
   section{max-width:920px;margin:0 auto 28px;padding:0 20px;}
 
   .dropzone{
-    border:1.5px dashed var(--line);
-    border-radius:var(--radius);
-    background:var(--card);
-    padding:36px 24px;
-    text-align:center;
-    transition:border-color .15s, background .15s;
-    cursor:pointer;
+    border:1.5px dashed var(--line);border-radius:var(--radius);background:var(--card);
+    padding:36px 24px;text-align:center;transition:border-color .15s, background .15s;cursor:pointer;
   }
-  .dropzone.drag{
-    border-color:var(--navy);
-    background:#FBF9F3;
-  }
+  .dropzone.drag{border-color:var(--navy);background:#FBF9F3;}
   .dropzone svg{width:46px;height:46px;color:var(--navy);margin-bottom:10px;}
   .dropzone p{margin:4px 0;}
   .dropzone .hint{color:var(--ink-soft);font-size:13px;}
-  .link-btn{
-    background:none;border:none;padding:0;
-    color:var(--navy);text-decoration:underline;
-    font:inherit;cursor:pointer;
-  }
+  .link-btn{background:none;border:none;padding:0;color:var(--navy);text-decoration:underline;font:inherit;cursor:pointer;}
 
-  .queue-list{
-    list-style:none;padding:0;margin:16px 0 0;
-    display:flex;flex-wrap:wrap;gap:8px;
-  }
+  .queue-list{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-wrap:wrap;gap:8px;}
   .queue-list li{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:6px;
-    padding:6px 10px;
-    font-size:12.5px;
-    font-family:'IBM Plex Mono',monospace;
-    color:var(--ink-soft);
+    background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 10px;
+    font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);
     display:flex;align-items:center;gap:8px;
   }
-  .queue-list li button{
-    background:none;border:none;color:var(--red);cursor:pointer;
-    font-size:14px;line-height:1;padding:0;
-  }
+  .queue-list li button{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0;}
 
   .actions{display:flex;gap:12px;margin-top:18px;align-items:center;flex-wrap:wrap;}
   .btn-primary{
-    background:var(--navy);color:#fff;
-    border:none;border-radius:7px;
-    padding:12px 20px;
-    font-family:'Inter',sans-serif;font-weight:600;font-size:14.5px;
-    cursor:pointer;
-    transition:background .15s;
+    background:var(--navy);color:#fff;border:none;border-radius:7px;padding:12px 20px;
+    font-family:'Inter',sans-serif;font-weight:600;font-size:14.5px;cursor:pointer;transition:background .15s;
   }
   .btn-primary:hover:not(:disabled){background:var(--navy-deep);}
   .btn-primary:disabled{background:#B9BFC9;cursor:not-allowed;}
   .btn-ghost{
-    background:none;border:1px solid var(--line);color:var(--ink-soft);
-    border-radius:7px;padding:11px 18px;font-size:14px;cursor:pointer;
-    font-family:'Inter',sans-serif;
+    background:none;border:1px solid var(--line);color:var(--ink-soft);border-radius:7px;padding:11px 18px;
+    font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;
   }
   .btn-ghost:hover{border-color:var(--ink-soft);}
 
-  .engine-status{
-    margin-top:14px;font-size:13px;color:var(--ink-soft);
-    font-family:'IBM Plex Mono',monospace;
-    min-height:18px;
-  }
+  .engine-status{margin-top:14px;font-size:13px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;min-height:18px;}
 
-  .progress-wrap{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:16px 18px;
-    margin-top:16px;
-  }
+  .progress-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-top:16px;}
   .progress-label{font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-family:'IBM Plex Mono',monospace;}
   .progress-track{height:6px;background:var(--paper-deep);border-radius:99px;overflow:hidden;}
   .progress-fill{height:100%;background:var(--navy);width:0%;transition:width .25s;}
 
-  /* Summary */
-  .summary{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:26px 26px 22px;
-  }
-  .summary h2{
-    font-family:'Zilla Slab',serif;
-    font-size:22px;margin:0 0 18px;color:var(--navy-deep);
-  }
-  .stat-grid{
-    display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;
-  }
-  .stat{
-    border:1px solid var(--line);
-    border-radius:8px;
-    padding:14px 12px;
-    text-align:center;
-    background:var(--paper);
-  }
+  .summary{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px 26px 22px;}
+  .summary h2{font-family:'Zilla Slab',serif;font-size:22px;margin:0 0 18px;color:var(--navy-deep);}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
+  .stat{border:1px solid var(--line);border-radius:8px;padding:14px 12px;text-align:center;background:var(--paper);}
   .stat-num{display:block;font-family:'Zilla Slab',serif;font-size:28px;font-weight:700;color:var(--navy-deep);}
   .stat-label{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
   .stat-ok .stat-num{color:var(--green);}
   .stat-error .stat-num{color:var(--red);}
   .stat-dup .stat-num{color:var(--amber);}
 
-  .summary h3{
-    font-family:'Inter',sans-serif;font-size:13.5px;text-transform:uppercase;
-    letter-spacing:.04em;color:var(--ink-soft);margin:20px 0 8px;
-  }
-  #nfeNumbersList, #duplicatesList{
-    list-style:none;padding:0;margin:0;
-    display:flex;flex-direction:column;gap:6px;
-  }
-  #nfeNumbersList li{
-    font-family:'IBM Plex Mono',monospace;font-size:13px;
-    display:flex;justify-content:space-between;
-    border-bottom:1px dotted var(--line);
-    padding:5px 0;
-  }
+  .summary h3{font-family:'Inter',sans-serif;font-size:13.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin:20px 0 8px;}
+  #nfeNumbersList, #duplicatesList{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;}
+  #nfeNumbersList li{font-family:'IBM Plex Mono',monospace;font-size:13px;display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:5px 0;}
   #nfeNumbersList li span.fname{color:var(--ink-soft);}
-  .duplicates-panel{
-    background:var(--amber-bg);
-    border:1px solid #E3CE9C;
-    border-radius:8px;
-    padding:14px 16px;
-    margin-top:18px;
-  }
+  .duplicates-panel{background:var(--amber-bg);border:1px solid #E3CE9C;border-radius:8px;padding:14px 16px;margin-top:18px;}
   .duplicates-panel h3{color:var(--amber);margin-top:0;}
-  #duplicatesList li{
-    font-size:13.5px;
-    padding:4px 0;
-  }
+  #duplicatesList li{font-size:13.5px;padding:4px 0;}
   #duplicatesList li strong{font-family:'IBM Plex Mono',monospace;}
-
   .summary .btn-primary{margin-top:20px;}
 
-  /* Results cards */
   .results{display:flex;flex-direction:column;gap:14px;}
-  .card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    display:flex;
-    overflow:hidden;
-  }
-  .card-thumb{
-    width:110px;min-width:110px;
-    background:#EDE7D6;
-    display:flex;align-items:center;justify-content:center;
-  }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;overflow:hidden;}
+  .card-thumb{width:110px;min-width:110px;background:#EDE7D6;display:flex;align-items:center;justify-content:center;}
   .card-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
   .card-body{padding:16px 18px;flex:1;min-width:0;}
   .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
   .filename{font-size:13px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;word-break:break-all;}
-  .badge{
-    font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;
-    padding:4px 9px;border-radius:99px;white-space:nowrap;
-  }
+  .badge{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border-radius:99px;white-space:nowrap;}
   .badge-ok{background:var(--green-bg);color:var(--green);}
   .badge-error{background:var(--red-bg);color:var(--red);}
   .badge-duplicate{background:var(--amber-bg);color:var(--amber);}
   .badge-processing{background:#E7E9EE;color:var(--ink-soft);}
 
   .key-strip{
-    margin-top:12px;
-    background:var(--mono-panel);
-    color:var(--mono-text);
-    font-family:'IBM Plex Mono',monospace;
-    font-size:14.5px;
-    letter-spacing:1px;
-    padding:11px 13px;
-    border-radius:6px;
-    overflow-x:auto;
-    white-space:nowrap;
+    margin-top:12px;background:var(--mono-panel);color:var(--mono-text);font-family:'IBM Plex Mono',monospace;
+    font-size:14.5px;letter-spacing:1px;padding:11px 13px;border-radius:6px;overflow-x:auto;white-space:nowrap;
   }
-  .key-strip.error{
-    color:#F1C9C9;
-    font-size:13px;
-    letter-spacing:normal;
-    white-space:normal;
-  }
+  .key-strip.error{color:#F1C9C9;font-size:13px;letter-spacing:normal;white-space:normal;}
   .key-strip .raw-hint{display:block;margin-top:4px;color:var(--mono-dim);font-size:11.5px;}
 
-  .card-meta{
-    display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;
-    font-size:12.5px;color:var(--ink-soft);
-  }
+  .method-line{margin-top:9px;font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+  .method-line b{color:var(--navy);}
+
+  .card-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--ink-soft);}
   .card-meta strong{color:var(--ink);}
 
-  .dup-note{
-    margin-top:10px;font-size:12.5px;color:var(--amber);
-    background:var(--amber-bg);border-radius:6px;padding:7px 10px;
-  }
+  .dup-note{margin-top:10px;font-size:12.5px;color:var(--amber);background:var(--amber-bg);border-radius:6px;padding:7px 10px;}
 
   .card-actions{margin-top:12px;}
   .btn-copy{
-    background:none;border:1px solid var(--navy);color:var(--navy);
-    border-radius:6px;padding:7px 14px;font-size:12.5px;font-weight:600;
-    cursor:pointer;font-family:'Inter',sans-serif;
+    background:none;border:1px solid var(--navy);color:var(--navy);border-radius:6px;padding:7px 14px;
+    font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;
   }
   .btn-copy:hover{background:var(--navy);color:#fff;}
   .btn-copy:disabled{opacity:.4;cursor:not-allowed;}
   .btn-copy.copied{background:var(--green);border-color:var(--green);color:#fff;}
 
   .toast{
-    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-    background:var(--navy-deep);color:#fff;padding:10px 20px;border-radius:8px;
-    font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
-    font-family:'Inter',sans-serif;
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy-deep);color:#fff;
+    padding:10px 20px;border-radius:8px;font-size:13.5px;opacity:0;pointer-events:none;
+    transition:opacity .2s, transform .2s;font-family:'Inter',sans-serif;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
 
-  .method-note{
-    font-size:12.5px;color:var(--ink-soft);
-    border-top:1px dotted var(--line);
-    margin-top:24px;padding-top:14px;
-  }
+  .method-note{font-size:12.5px;color:var(--ink-soft);border-top:1px dotted var(--line);margin-top:24px;padding-top:14px;}
+  .method-note p{margin:0 0 8px;}
 
   @media (max-width:640px){
     h1{font-size:30px;}
@@ -306,8 +182,11 @@
 <header>
   <div class="eyebrow">DANFE · Código de barras · Chave de acesso</div>
   <h1>Leitor de Chaves NF-e</h1>
-  <p class="subtitle">Em Teste use com cautela* - Envie as imagens dos DANFEs. O leitor localiza a chave de 44 dígitos, realiza rotações de segurança e valida tanto o dígito verificador quanto a integridade real do CNPJ emissor e a data de emissão para descartar falsos positivos.</p>
-</header>
+  <p class="subtitle"><strong>Em Teste use com cautela*</strong> Envie as imagens das DANFEs. O leitor localiza e extrai as chave de 44 dígitos.</p>
+  </header>
+
+
+</div>
 
 <section class="intake">
   <div class="dropzone" id="dropzone">
@@ -355,7 +234,9 @@
 <section class="results" id="results"></section>
 
 <section class="method-note">
-  Como funciona a verificação: os 43 primeiros dígitos de toda chave de NF-e determinam matematicamente o 44º dígito (o dígito verificador), pelo algoritmo módulo 11 definido pela SEFAZ. Adicionalmente, o CNPJ interno do emissor (dígitos 7 a 20) é validado pelos seus próprios dígitos verificadores. Qualquer falha de estrutura ou data impossível descarta a chave.
+  <p><b>Como a chave é localizada:</b> o leitor gira a imagem em vários ângulos (retos e finos, para corrigir fotos levemente tortas) e busca o código de barras Code 128 com a biblioteca ZXing em duas camadas: primeiro uma varredura rápida da imagem inteira; se não achar, uma busca mais lenta e minuciosa em resolução total, priorizando o canto superior direito (posição padrão do código no DANFE), depois o topo inteiro, e por fim a imagem inteira em alta resolução — cobrindo tanto fotos da nota inteira quanto imagens já recortadas apertadas no código de barras. A partir da posição exata do código, recorta só a faixa de dígitos logo abaixo — evitando confundir a chave com CNPJ, datas, valores ou outros números da nota.</p>
+  <p><b>Como a leitura é confirmada:</b> essa faixa recortada é ampliada, convertida para preto e branco (limiar automático) e tem ruído removido, e então passa por dois motores de OCR diferentes. Uma chave só aparece como "validada" se (a) o dígito verificador oficial (módulo 11) bater, (b) os campos da chave forem plausíveis (UF existente, mês entre 01–12, ano entre 2006 e o ano atual, modelo 55 ou 65, tipo de emissão entre 1–9) e (c) não houver conflito entre os dois motores. Se um motor ler algo diferente do outro, ou se a chave "bater" no dígito verificador mas tiver um campo impossível (ano de 2000, mês 13 etc.), a nota vai para "erro" — nunca escolhemos um número no chute.</p>
+  <p><b>Quando o código de barras não é encontrado</b> em nenhuma das camadas de busca (imagem muito cortada, muito escura, etc.), o leitor cai para um plano B: varre a página inteira em busca de uma sequência de 44 dígitos que passe tanto na validação matemática quanto na de plausibilidade, também cruzando Tesseract e OCRAD quando possível. Esse modo é menos preciso que a leitura ancorada no código de barras e fica marcado como tal no resultado.</p>
 </section>
 
 <div class="toast" id="toast"></div>
@@ -384,17 +265,21 @@
   const resultsEl = document.getElementById('results');
   const toastEl = document.getElementById('toast');
 
-  let queue = [];      
-  let results = [];    
+  let queue = [];
+  let results = [];
   let worker = null;
+  let zxingReader = null;
+  let zxingHints = null;
   let processing = false;
 
+  const SEARCH_ANGLES = [0,5,-5,10,-10,15,-15,90,95,85,180,175,185,270,265,275];
+
+  // ---------- File queue handling ----------
   function addFiles(fileList){
     const arr = Array.from(fileList).filter(f => f.type.startsWith('image/'));
     queue = queue.concat(arr);
     renderQueue();
   }
-
   function renderQueue(){
     queueList.innerHTML = '';
     queue.forEach((f, i) => {
@@ -413,87 +298,21 @@
   dropzone.addEventListener('click', () => fileInput.click());
   browseBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
   fileInput.addEventListener('change', (e) => { addFiles(e.target.files); fileInput.value=''; });
-
-  ['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => {
-    e.preventDefault(); dropzone.classList.add('drag');
-  }));
-  ['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, (e) => {
-    e.preventDefault(); dropzone.classList.remove('drag');
-  }));
-  dropzone.addEventListener('drop', (e) => {
-    if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
-  });
+  ['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+  dropzone.addEventListener('drop', (e) => { if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
 
   clearBtn.addEventListener('click', () => {
-    queue = [];
-    results = [];
+    queue = []; results = [];
     renderQueue();
     resultsEl.innerHTML = '';
     summary.style.display = 'none';
     engineStatus.textContent = '';
   });
 
-  // VALIDAÇÃO ESTRUTURAL DO CNPJ (Módulo 11 oficial de 14 dígitos)
-  function validarCNPJ(cnpj) {
-    if (!cnpj || cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
-    
-    // Validar primeiro dígito verificador
-    let tamanho = cnpj.length - 2;
-    let numeros = cnpj.substring(0, tamanho);
-    let digitos = cnpj.substring(tamanho);
-    let soma = 0;
-    let pos = tamanho - 7;
-    for (let i = tamanho; i >= 1; i--) {
-      soma += parseInt(numeros.charAt(tamanho - i), 10) * pos--;
-      if (pos < 2) pos = 9;
-    }
-    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-    if (resultado !== parseInt(digitos.charAt(0), 10)) return false;
-    
-    // Validar segundo dígito verificador
-    tamanho = tamanho + 1;
-    numeros = cnpj.substring(0, tamanho);
-    soma = 0;
-    pos = tamanho - 7;
-    for (let i = tamanho; i >= 1; i--) {
-      soma += parseInt(numeros.charAt(tamanho - i), 10) * pos--;
-      if (pos < 2) pos = 9;
-    }
-    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-    if (resultado !== parseInt(digitos.charAt(1), 10)) return false;
-    
-    return true;
-  }
-
-  // VALIDAÇÃO: CNPJ + Módulo 11 + Filtro estrito de data futura impossível
+  // ---------- NF-e key validation (módulo 11 oficial) ----------
   function validarChaveNFe(chave){
     if (!/^\d{44}$/.test(chave)) return false;
-
-    // 1. Validar integridade estrutural do CNPJ embutido na chave (dígitos 7 a 20)
-    const cnpjInChave = chave.slice(6, 20);
-    if (!validarCNPJ(cnpjInChave)) return false;
-    
-    // 2. Validar ano e mês (AAMM na chave começa na posição index 2 até 6)
-    const aaStr = chave.slice(2, 4);
-    const mmStr = chave.slice(4, 6);
-    const anoChave = parseInt("20" + aaStr, 10);
-    const mesChave = parseInt(mmStr, 10);
-    
-    if (mesChave < 1 || mesChave > 12) return false;
-    
-    // Pega a data atual do sistema do usuário
-    const hoje = new Date();
-    const anoAtual = hoje.getFullYear();
-    const mesAtual = hoje.getMonth() + 1; // 0-based
-    
-    // Bloqueia se o ano for maior que o atual ou se for o ano atual mas mês futuro
-    if (anoChave > anoAtual) return false;
-    if (anoChave === anoAtual && mesChave > mesAtual) return false;
-    
-    // Bloqueia notas excessivamente antigas de forma razoável (ex: antes de 2005, início da NFe)
-    if (anoChave < 2005) return false;
-
-    // 3. Validação matemática do dígito verificador geral
     const base = chave.slice(0,43);
     const dvInformado = parseInt(chave[43],10);
     let soma = 0, peso = 2;
@@ -505,28 +324,41 @@
     const dv = (resto === 0 || resto === 1) ? 0 : 11 - resto;
     return dv === dvInformado;
   }
-
   function parseChave(chave){
     return {
-      cUF: chave.slice(0,2),
-      AAMM: chave.slice(2,6),
-      cnpj: chave.slice(6,20),
-      modelo: chave.slice(20,22),
-      serie: chave.slice(22,25),
-      nNF: chave.slice(25,34),
-      tpEmis: chave.slice(34,35),
-      cNF: chave.slice(35,43),
-      cDV: chave.slice(43,44),
+      cUF: chave.slice(0,2), AAMM: chave.slice(2,6), cnpj: chave.slice(6,20),
+      modelo: chave.slice(20,22), serie: chave.slice(22,25), nNF: chave.slice(25,34),
+      tpEmis: chave.slice(34,35), cNF: chave.slice(35,43), cDV: chave.slice(43,44),
     };
   }
 
-  function formatarChave(chave){
-    return chave.match(/.{1,4}/g).join(' ');
-  }
+  // Códigos de UF válidos (IBGE) usados nos 2 primeiros dígitos da chave
+  const VALID_UF_CODES = ['11','12','13','14','15','16','17','21','22','23','24','25','26','27','28','29','31','32','33','35','41','42','43','50','51','52','53'];
 
-  function formatarCNPJ(cnpj){
-    return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  // O módulo 11 sozinho aceita ~1 em cada 11 sequências aleatórias de 44 dígitos.
+  // Isso é seguro quando a sequência já veio de uma região confiável (faixa da
+  // chave sob o código de barras), mas no plano B (varredura da página inteira)
+  // várias sequências candidatas são testadas, o que aumenta a chance de um
+  // "falso positivo" — uma chave matematicamente válida, porém com UF, data ou
+  // modelo de documento impossíveis. Por isso toda chave aceita passa também
+  // por esta checagem semântica, além do dígito verificador.
+  function validarChaveNFeCompleta(chave){
+    if (!validarChaveNFe(chave)) return false;
+    const p = parseChave(chave);
+    if (!VALID_UF_CODES.includes(p.cUF)) return false;
+    const mm = parseInt(p.AAMM.slice(2,4), 10);
+    const yy = parseInt(p.AAMM.slice(0,2), 10);
+    if (mm < 1 || mm > 12) return false;
+    const anoCompleto = 2000 + yy;
+    const anoAtual = new Date().getFullYear();
+    if (anoCompleto < 2006 || anoCompleto > anoAtual + 1) return false;
+    if (!['55','65'].includes(p.modelo)) return false;
+    const tpEmis = parseInt(p.tpEmis, 10);
+    if (tpEmis < 1 || tpEmis > 9) return false;
+    return true;
   }
+  function formatarChave(chave){ return chave.match(/.{1,4}/g).join(' '); }
+  function formatarCNPJ(cnpj){ return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5'); }
 
   function extractCandidates(text){
     const groups = text.split(/[^\d]+/).filter(Boolean);
@@ -543,6 +375,7 @@
     return Array.from(candidates);
   }
 
+  // ---------- Image loading ----------
   function loadImage(file){
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
@@ -552,30 +385,6 @@
       img.src = url;
     });
   }
-
-  function preprocess(img, angleDeg){
-    const rad = angleDeg * Math.PI / 180;
-    const swap = (angleDeg % 180 !== 0);
-    const w = img.width, h = img.height;
-    let scale = 1;
-    const maxDim = Math.max(w,h);
-    if (maxDim < 1800) scale = 1800 / maxDim;
-    if (scale > 2.5) scale = 2.5;
-    const cw = Math.round((swap ? h : w) * scale);
-    const ch = Math.round((swap ? w : h) * scale);
-    const canvas = document.createElement('canvas');
-    canvas.width = cw; canvas.height = ch;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0,0,cw,ch);
-    ctx.filter = 'grayscale(1) contrast(1.4) brightness(1.02)';
-    ctx.translate(cw/2, ch/2);
-    ctx.rotate(rad);
-    ctx.scale(scale, scale);
-    ctx.drawImage(img, -w/2, -h/2);
-    return canvas;
-  }
-
   function makeThumb(img){
     const canvas = document.createElement('canvas');
     const maxW = 220;
@@ -587,89 +396,379 @@
     return canvas.toDataURL('image/jpeg', 0.72);
   }
 
-  async function processOneImage(file){
-    const { img, url } = await loadImage(file);
-    const thumb = makeThumb(img);
-    URL.revokeObjectURL(url);
-
-    const angles = [0, 90, 270, 180];
-    let bestRawLen = 0;
-    let bestRaw = '';
-    let foundKey = null;
-
-    for (const angle of angles){
-      const canvas = preprocess(img, angle);
-      let text = '';
-      try{
-        const { data } = await worker.recognize(canvas);
-        text = data && data.text ? data.text : '';
-      }catch(err){
-        continue;
-      }
-      
-      const digitsOnly = text.replace(/[^\d]/g,'');
-      if (digitsOnly.length > bestRawLen){ 
-        bestRawLen = digitsOnly.length; 
-        bestRaw = digitsOnly; 
-      }
-
-      // Validação anti-ruído
-      if (digitsOnly.length < 38 || digitsOnly.length > 250) {
-        continue;
-      }
-
-      const candidates = extractCandidates(text);
-      const valid = [...new Set(candidates.filter(validarChaveNFe))];
-      
-      if (valid.length === 1){
-        foundKey = valid[0];
-        break;
-      }
-    }
-
-    if (foundKey){
-      const parsed = parseChave(foundKey);
-      return {
-        fileName: file.name,
-        thumb,
-        status: 'ok',
-        key: foundKey,
-        parsed,
-      };
-    }else{
-      return {
-        fileName: file.name,
-        thumb,
-        status: 'error',
-        key: null,
-        rawPreview: bestRaw ? bestRaw.slice(0,60) : '',
-        rawLen: bestRawLen,
-      };
-    }
+  // ---------- Generic rotation to canvas (bounding-box safe for any angle) ----------
+  function rotateToCanvas(img, angleDeg, scale){
+    scale = scale || 1;
+    const rad = angleDeg * Math.PI / 180;
+    const w = img.width * scale, h = img.height * scale;
+    const cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
+    const newW = Math.max(1, Math.ceil(w*cos + h*sin));
+    const newH = Math.max(1, Math.ceil(w*sin + h*cos));
+    const canvas = document.createElement('canvas');
+    canvas.width = newW; canvas.height = newH;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,newW,newH);
+    ctx.translate(newW/2, newH/2);
+    ctx.rotate(rad);
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, -img.width/2, -img.height/2);
+    return canvas;
   }
 
+  // ---------- ZXing barcode detection ----------
+  function ensureZxing(){
+    if (zxingReader) return zxingReader;
+    if (typeof ZXing === 'undefined') throw new Error('Biblioteca de leitura de código de barras (ZXing) não carregou.');
+    zxingHints = new Map();
+    zxingHints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128]);
+    zxingHints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    zxingReader = new ZXing.MultiFormatReader();
+    return zxingReader;
+  }
+  function tryDecodeBarcode(canvas){
+    const reader = ensureZxing();
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const binarizer = new ZXing.HybridBinarizer(luminanceSource);
+    const bitmap = new ZXing.BinaryBitmap(binarizer);
+    return reader.decode(bitmap, zxingHints);
+  }
+
+  // Extrai left/right/rowY/barW de uma tentativa de decodificação, ou null se não achar nada usável.
+  function tryDecodeOnCanvas(canvas){
+    let result;
+    try{ result = tryDecodeBarcode(canvas); }catch(e){ return null; }
+    if (!result) return null;
+    let points;
+    try{ points = result.getResultPoints(); }catch(e){ return null; }
+    if (!points || points.length < 2) return null;
+    const xs = points.map(p => p.getX());
+    const ys = points.map(p => p.getY());
+    const left = Math.min(...xs), right = Math.max(...xs);
+    const rowY = ys[0];
+    const barW = right - left;
+    if (barW < 15) return null;
+    return { left, right, rowY, barW };
+  }
+
+  function scaleCanvasTo(canvas, maxDim){
+    const cur = Math.max(canvas.width, canvas.height);
+    if (!maxDim || cur <= maxDim) return canvas;
+    const factor = maxDim / cur;
+    const out = document.createElement('canvas');
+    out.width = Math.max(1, Math.round(canvas.width * factor));
+    out.height = Math.max(1, Math.round(canvas.height * factor));
+    const ctx = out.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(canvas, 0, 0, out.width, out.height);
+    return out;
+  }
+
+  // Recorta uma sub-região (em frações 0..1 do canvas já rotacionado) e devolve
+  // também o deslocamento e o fator de escala usados, para remapear coordenadas.
+  function subCropRegion(canvas, q){
+    const cx = Math.round(q.x * canvas.width), cy = Math.round(q.y * canvas.height);
+    const cw = Math.max(1, Math.round(q.w * canvas.width)), ch = Math.max(1, Math.round(q.h * canvas.height));
+    const raw = document.createElement('canvas');
+    raw.width = cw; raw.height = ch;
+    raw.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+    const scaled = scaleCanvasTo(raw, q.maxDim);
+    const scaleFactor = scaled.width / raw.width;
+    return { canvas: scaled, offsetX: cx, offsetY: cy, scaleFactor };
+  }
+
+  // Regiões priorizadas para a busca detalhada (2ª camada): o padrão de layout do
+  // DANFE costuma trazer o código de barras no canto superior direito, mas cobrimos
+  // também o topo inteiro e, por fim, a imagem inteira em resolução mais alta —
+  // útil quando a imagem já é um recorte apertado só do código de barras.
+  const QUADRANTS_TIER2 = [
+    { name: 'canto superior direito', x: 0.38, y: 0.0, w: 0.62, h: 0.42, maxDim: 1400 },
+    { name: 'faixa superior completa', x: 0.0, y: 0.0, w: 1.0, h: 0.45, maxDim: 1700 },
+    { name: 'imagem inteira em alta resolução', x: 0.0, y: 0.0, w: 1.0, h: 1.0, maxDim: 2400 },
+  ];
+
+  function locateBarcodeRegion(img){
+    // Camada 1: rápida — imagem inteira reduzida, todos os ângulos.
+    const maxDim = Math.max(img.width, img.height);
+    const searchScale1 = maxDim > 1100 ? 1100/maxDim : 1;
+    for (const angle of SEARCH_ANGLES){
+      const smallCanvas = rotateToCanvas(img, angle, searchScale1);
+      const found = tryDecodeOnCanvas(smallCanvas);
+      if (found){
+        return { angle, mapScale: 1/searchScale1, left: found.left, right: found.right, rowY: found.rowY, barW: found.barW, tier: 1, region: 'imagem completa (busca rápida)' };
+      }
+    }
+    // Camada 2: mais lenta e minuciosa — imagem em resolução total, testando
+    // regiões prováveis (o código de barras costuma ficar próximo do topo,
+    // frequentemente à direita) antes de cair para a imagem inteira em alta resolução.
+    for (const angle of SEARCH_ANGLES){
+      const fullCanvas = rotateToCanvas(img, angle, 1);
+      for (const q of QUADRANTS_TIER2){
+        const { canvas: sub, offsetX, offsetY, scaleFactor } = subCropRegion(fullCanvas, q);
+        const found = tryDecodeOnCanvas(sub);
+        if (found){
+          const inv = 1/scaleFactor;
+          return {
+            angle, mapScale: 1,
+            left: found.left*inv + offsetX,
+            right: found.right*inv + offsetX,
+            rowY: found.rowY*inv + offsetY,
+            barW: found.barW*inv,
+            tier: 2, region: q.name,
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  function extractKeyRegionCanvas(img, loc){
+    const fullCanvas = rotateToCanvas(img, loc.angle, 1);
+    const mapScale = loc.mapScale;
+    const left = loc.left * mapScale, right = loc.right * mapScale;
+    const rowY = loc.rowY * mapScale, barW = loc.barW * mapScale;
+    const padX = barW * 0.10;
+    let cropX = left - padX;
+    let cropW = (right - left) + padX*2;
+    let cropYStart = rowY - barW*0.06;
+    let cropH = barW * 0.60;
+    cropX = Math.max(0, cropX);
+    cropYStart = Math.max(0, cropYStart);
+    cropW = Math.min(fullCanvas.width - cropX, cropW);
+    cropH = Math.min(fullCanvas.height - cropYStart, cropH);
+    const region = document.createElement('canvas');
+    region.width = Math.max(1, Math.round(cropW));
+    region.height = Math.max(1, Math.round(cropH));
+    const ctx = region.getContext('2d');
+    ctx.drawImage(fullCanvas, cropX, cropYStart, cropW, cropH, 0, 0, region.width, region.height);
+    return region;
+  }
+
+  // ---------- Upscale + binarize (Otsu) + denoise ----------
+  function adaptiveUpscale(canvas){
+    let factor = 3;
+    const maxOutW = 2600;
+    if (canvas.width * factor > maxOutW) factor = Math.max(1, maxOutW / canvas.width);
+    if (factor <= 1.02) return canvas;
+    const out = document.createElement('canvas');
+    out.width = Math.round(canvas.width * factor);
+    out.height = Math.round(canvas.height * factor);
+    const ctx = out.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(canvas, 0, 0, out.width, out.height);
+    return out;
+  }
+  function toGrayscaleData(canvas){
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.getImageData(0,0,canvas.width, canvas.height);
+    const d = imgData.data;
+    const gray = new Uint8ClampedArray(canvas.width * canvas.height);
+    for (let i=0, p=0; i<d.length; i+=4, p++){
+      gray[p] = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) | 0;
+    }
+    return gray;
+  }
+  function otsuThreshold(gray){
+    const hist = new Array(256).fill(0);
+    for (let i=0;i<gray.length;i++) hist[gray[i]]++;
+    const total = gray.length;
+    let sum = 0;
+    for (let t=0;t<256;t++) sum += t*hist[t];
+    let sumB=0, wB=0, wF=0, maxVar=0, threshold=127;
+    for (let t=0;t<256;t++){
+      wB += hist[t];
+      if (wB===0) continue;
+      wF = total - wB;
+      if (wF===0) break;
+      sumB += t*hist[t];
+      const mB = sumB/wB;
+      const mF = (sum-sumB)/wF;
+      const varBetween = wB*wF*(mB-mF)*(mB-mF);
+      if (varBetween > maxVar){ maxVar = varBetween; threshold = t; }
+    }
+    return threshold;
+  }
+  function medianFilter(gray, w, h, radius){
+    const out = new Uint8ClampedArray(gray.length);
+    const win = [];
+    for (let y=0;y<h;y++){
+      for (let x=0;x<w;x++){
+        win.length = 0;
+        for (let dy=-radius; dy<=radius; dy++){
+          const yy = y+dy; if (yy<0||yy>=h) continue;
+          const rowBase = yy*w;
+          for (let dx=-radius; dx<=radius; dx++){
+            const xx = x+dx; if (xx<0||xx>=w) continue;
+            win.push(gray[rowBase+xx]);
+          }
+        }
+        win.sort((a,b)=>a-b);
+        out[y*w+x] = win[win.length>>1];
+      }
+    }
+    return out;
+  }
+  function binarizeToCanvas(canvas){
+    const w = canvas.width, h = canvas.height;
+    const gray = toGrayscaleData(canvas);
+    const denoised = medianFilter(gray, w, h, 1);
+    const t = otsuThreshold(denoised);
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const ctx = out.getContext('2d');
+    const imgData = ctx.createImageData(w,h);
+    for (let p=0; p<denoised.length; p++){
+      const v = denoised[p] > t ? 255 : 0;
+      const idx = p*4;
+      imgData.data[idx]=v; imgData.data[idx+1]=v; imgData.data[idx+2]=v; imgData.data[idx+3]=255;
+    }
+    ctx.putImageData(imgData,0,0);
+    return out;
+  }
+  function preprocessForOCR(canvas){
+    const up = adaptiveUpscale(canvas);
+    return binarizeToCanvas(up);
+  }
+
+  // ---------- Plano B: full-page fallback ----------
+  function preprocessFullPage(img, angleDeg){
+    const maxDim = Math.max(img.width, img.height);
+    const scale = maxDim < 1500 ? Math.min(2.2, 1500/maxDim) : 1;
+    const rad = angleDeg * Math.PI / 180;
+    const w = img.width*scale, h = img.height*scale;
+    const cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
+    const newW = Math.max(1, Math.ceil(w*cos + h*sin));
+    const newH = Math.max(1, Math.ceil(w*sin + h*cos));
+    const canvas = document.createElement('canvas');
+    canvas.width = newW; canvas.height = newH;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,newW,newH);
+    ctx.filter = 'grayscale(1) contrast(1.35) brightness(1.05)';
+    ctx.translate(newW/2, newH/2);
+    ctx.rotate(rad);
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, -img.width/2, -img.height/2);
+    return canvas;
+  }
+  async function planoBWholePage(img){
+    const angles = [0,90,270,180];
+    let bestRawLen = 0, bestRaw = '';
+    await worker.setParameters({ tessedit_pageseg_mode: '6' });
+    for (const angle of angles){
+      const canvas = preprocessFullPage(img, angle);
+      let text = '';
+      try{ const { data } = await worker.recognize(canvas); text = data.text || ''; }catch(e){ continue; }
+      const digitsOnly = text.replace(/[^\d]/g,'');
+      if (digitsOnly.length > bestRawLen){ bestRawLen = digitsOnly.length; bestRaw = digitsOnly; }
+      const tValid = [...new Set(extractCandidates(text).filter(validarChaveNFeCompleta))];
+
+      let oText = '';
+      try{ oText = OCRAD(canvas) || ''; }catch(e){}
+      const oValid = [...new Set(extractCandidates(oText).filter(validarChaveNFeCompleta))];
+
+      if (tValid.length === 1 && oValid.length === 1 && tValid[0] === oValid[0]){
+        return { foundKey: tValid[0], angle, bestRaw, bestRawLen, confidence: 'dupla' };
+      }
+      if (tValid.length === 1 && oValid.length === 0){
+        return { foundKey: tValid[0], angle, bestRaw, bestRawLen, confidence: 'tesseract' };
+      }
+      if (oValid.length === 1 && tValid.length === 0){
+        return { foundKey: oValid[0], angle, bestRaw, bestRawLen, confidence: 'ocrad' };
+      }
+      // se ambos acharam candidatas plausíveis mas diferentes entre si, não aceita
+      // nesta rotação e segue tentando as outras rotações antes de desistir.
+    }
+    return { foundKey: null, bestRaw, bestRawLen };
+  }
+
+  // ---------- Worker / engines setup ----------
   async function ensureWorker(){
     if (worker) return worker;
-    if (typeof Tesseract === 'undefined'){
-      throw new Error('O arquivo do motor de OCR não carregou.');
-    }
-    engineStatus.textContent = 'Carregando motor de OCR…';
+    if (typeof Tesseract === 'undefined') throw new Error('O arquivo do motor Tesseract não carregou.');
+    engineStatus.textContent = 'Carregando motores de OCR (pode levar alguns segundos na primeira vez)…';
     const createPromise = Tesseract.createWorker('eng', 1, {
       workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js' + '@5.1.1/dist/worker.min.js',
       corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core' + '@5.1.1',
       langPath: 'https://tessdata.projectnaptha.com/4.0.0',
       logger: () => {},
     });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite excedido')), 25000));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo esgotado baixando os arquivos do motor de OCR (rede bloqueada ou muito lenta).')), 25000));
     worker = await Promise.race([createPromise, timeoutPromise]);
-    await worker.setParameters({
-      tessedit_char_whitelist: '0123456789',
-      tessedit_pageseg_mode: '6',
-    });
-    engineStatus.textContent = 'Motor de OCR pronto.';
+    await worker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' });
+    if (typeof OCRAD === 'undefined') throw new Error('O arquivo do motor OCRAD não carregou.');
+    if (typeof ZXing === 'undefined') throw new Error('O arquivo do ZXing (leitor de código de barras) não carregou.');
+    engineStatus.textContent = 'Motores prontos (Tesseract + OCRAD + ZXing).';
     return worker;
   }
 
+  // ---------- Core per-image processing ----------
+  async function processOneImage(file){
+    const { img, url } = await loadImage(file);
+    const thumb = makeThumb(img);
+    URL.revokeObjectURL(url);
+
+    let loc = null;
+    try{ loc = locateBarcodeRegion(img); }catch(e){ loc = null; }
+
+    let conflictInfo = null;
+
+    if (loc){
+      try{
+        const regionCanvas = extractKeyRegionCanvas(img, loc);
+        const processed = preprocessForOCR(regionCanvas);
+
+        await worker.setParameters({ tessedit_pageseg_mode: '7' });
+        let tText = '';
+        try{ const { data } = await worker.recognize(processed); tText = data.text || ''; }catch(e){}
+
+        let oText = '';
+        try{ oText = OCRAD(processed) || ''; }catch(e){}
+
+        const tValid = [...new Set(extractCandidates(tText).filter(validarChaveNFeCompleta))];
+        const oValid = [...new Set(extractCandidates(oText).filter(validarChaveNFeCompleta))];
+
+        let finalKey = null, confidence = null;
+        if (tValid.length === 1 && oValid.length === 1){
+          if (tValid[0] === oValid[0]){ finalKey = tValid[0]; confidence = 'dupla'; }
+          else { conflictInfo = { a: tValid[0], b: oValid[0] }; }
+        } else if (tValid.length === 1 && oValid.length === 0){
+          finalKey = tValid[0]; confidence = 'tesseract';
+        } else if (oValid.length === 1 && tValid.length === 0){
+          finalKey = oValid[0]; confidence = 'ocrad';
+        } else if (tValid.length > 1 || oValid.length > 1){
+          conflictInfo = conflictInfo || { ambiguous: true };
+        }
+
+        if (finalKey){
+          return {
+            fileName: file.name, thumb, status: 'ok', key: finalKey, parsed: parseChave(finalKey),
+            method: 'codigo-barras', confidence, angle: loc.angle, tier: loc.tier, region: loc.region,
+          };
+        }
+      }catch(e){ /* cai para o plano B */ }
+    }
+
+    const fallback = await planoBWholePage(img);
+    if (fallback.foundKey){
+      return {
+        fileName: file.name, thumb, status: 'ok', key: fallback.foundKey, parsed: parseChave(fallback.foundKey),
+        method: 'pagina-inteira', confidence: fallback.confidence || 'unico-motor', angle: fallback.angle,
+      };
+    }
+
+    return {
+      fileName: file.name, thumb, status: 'error',
+      hadBarcode: !!loc,
+      conflictInfo,
+      rawPreview: fallback.bestRaw || '',
+      rawLen: fallback.bestRawLen || 0,
+    };
+  }
+
+  // ---------- Process button ----------
   processBtn.addEventListener('click', async () => {
     if (processing || queue.length === 0) return;
     processing = true;
@@ -680,7 +779,9 @@
       await ensureWorker();
     }catch(err){
       const detail = (err && err.message) ? err.message : String(err);
-      engineStatus.innerHTML = `Falha ao iniciar OCR: ${escapeHtml(detail)}. Abra fora do chat se necessário.`;
+      engineStatus.innerHTML =
+        `Não foi possível carregar os motores de OCR.<br>Detalhe técnico: ${escapeHtml(detail)}<br><br>` +
+        `Se você está vendo isto na pré-visualização dentro do chat, baixe o arquivo .html e abra-o diretamente no seu navegador (fora do chat).`;
       processing = false;
       processBtn.disabled = queue.length === 0;
       clearBtn.disabled = false;
@@ -697,24 +798,21 @@
 
     for (let i = 0; i < toProcess.length; i++){
       const file = toProcess[i];
-      progressLabel.textContent = `Lendo ${i+1} de ${toProcess.length} — ${file.name}`;
-      progressFill.style.width = Math.round(((i)/toProcess.length)*100) + '%';
+      progressLabel.textContent = `Processando ${i+1} de ${toProcess.length} — ${file.name}`;
+      progressFill.style.width = Math.round((i/toProcess.length)*100) + '%';
 
       const placeholderId = 'card-' + i + '-' + Date.now();
       renderProcessingCard(placeholderId, file.name);
 
       let res;
-      try{
-        res = await processOneImage(file);
-      }catch(err){
-        res = { fileName: file.name, thumb:'', status:'error', key:null, rawPreview:'', rawLen:0, hardError:true };
-      }
+      try{ res = await processOneImage(file); }
+      catch(err){ res = { fileName: file.name, thumb:'', status:'error', hadBarcode:false, rawPreview:'', rawLen:0 }; }
       res.id = placeholderId;
       results.push(res);
       progressFill.style.width = Math.round(((i+1)/toProcess.length)*100) + '%';
     }
 
-    progressLabel.textContent = `Leitura concluída.`;
+    progressLabel.textContent = `Concluído — ${toProcess.length} nota(s) processada(s).`;
     setTimeout(() => { progressWrap.style.display = 'none'; }, 1200);
 
     markDuplicates();
@@ -737,7 +835,7 @@
           <span class="filename">${escapeHtml(fileName)}</span>
           <span class="badge badge-processing">Lendo…</span>
         </div>
-        <div class="key-strip">Processando imagem e buscando a chave…</div>
+        <div class="key-strip">Localizando o código de barras e lendo a chave…</div>
       </div>`;
     resultsEl.appendChild(card);
   }
@@ -752,13 +850,41 @@
     });
     Object.values(byKey).forEach(group => {
       if (group.length > 1){
-        group.forEach((r, idx) => {
+        group.forEach((r) => {
           r.duplicate = true;
-          r.duplicateFirst = (idx === 0);
           r.duplicateGroup = group.map(g => g.fileName).filter(n => n !== r.fileName);
         });
       }
     });
+  }
+
+  function methodLabel(r){
+    if (r.method === 'codigo-barras'){
+      const conf = r.confidence === 'dupla' ? 'confirmada por 2 motores (Tesseract + OCRAD)'
+                 : r.confidence === 'tesseract' ? 'confirmada pelo Tesseract (OCRAD não leu nada nesta faixa)'
+                 : r.confidence === 'ocrad' ? 'confirmada pelo OCRAD (Tesseract não leu nada nesta faixa)'
+                 : 'confirmada';
+      const regionInfo = r.region ? ` · região: ${r.region}` : '';
+      return `Localizada pelo código de barras (ângulo ${r.angle}°${regionInfo}) · ${conf}`;
+    }
+    const conf2 = r.confidence === 'dupla' ? 'confirmada por 2 motores (Tesseract + OCRAD)' : 'confirmada por 1 motor — confira com atenção';
+    return `Plano B: varredura da página inteira (ângulo ${r.angle}°) · ${conf2}`;
+  }
+
+  function errorMessage(r){
+    if (r.conflictInfo && r.conflictInfo.a){
+      return `Os dois motores de OCR leram essa chave de forma diferente e ambas as leituras passaram na validação — por segurança, nenhuma foi aceita.<br>Tesseract: <span class="raw-hint" style="display:inline">${formatarChave(r.conflictInfo.a)}</span><br>OCRAD: <span class="raw-hint" style="display:inline">${formatarChave(r.conflictInfo.b)}</span>`;
+    }
+    if (r.conflictInfo && r.conflictInfo.ambiguous){
+      return `Mais de uma sequência de 44 dígitos passou na validação nesta imagem — não é possível determinar qual é a chave com segurança.`;
+    }
+    const barcodeMsg = r.hadBarcode
+      ? 'O código de barras foi localizado, mas não foi possível confirmar a chave com segurança na faixa recortada.'
+      : 'Não foi possível localizar o código de barras nesta imagem.';
+    const rawMsg = r.rawLen >= 30
+      ? `<span class="raw-hint">Melhor trecho encontrado na varredura de página inteira (não confirmado, ${r.rawLen} dígitos) — não copiado automaticamente.</span>`
+      : `<span class="raw-hint">Poucos dígitos legíveis nesta imagem.</span>`;
+    return `${barcodeMsg} A varredura de página inteira (plano B) também não confirmou uma chave. Tente reenviar com melhor resolução ou iluminação.${rawMsg}`;
   }
 
   function renderResults(){
@@ -766,14 +892,12 @@
     results.forEach(r => {
       const card = document.createElement('article');
       card.className = 'card';
-
-      let badge, keyStripHtml, metaHtml = '', dupHtml = '', actionsHtml = '';
+      let badge, keyStripHtml, metaHtml = '', dupHtml = '', actionsHtml = '', methodHtml = '';
 
       if (r.status === 'ok'){
-        badge = r.duplicate
-          ? '<span class="badge badge-duplicate">Duplicada</span>'
-          : '<span class="badge badge-ok">Chave validada</span>';
+        badge = r.duplicate ? '<span class="badge badge-duplicate">Duplicada</span>' : '<span class="badge badge-ok">Chave validada</span>';
         keyStripHtml = `<div class="key-strip">${formatarChave(r.key)}</div>`;
+        methodHtml = `<div class="method-line">${methodLabel(r)}</div>`;
         const p = r.parsed;
         const nNF = String(parseInt(p.nNF,10));
         const mm = p.AAMM.slice(2,4);
@@ -785,12 +909,12 @@
           <span>CNPJ <strong>${formatarCNPJ(p.cnpj)}</strong></span>
         </div>`;
         if (r.duplicate){
-          dupHtml = `<div class="dup-note">Mesma chave também encontrada em: ${r.duplicateGroup.map(escapeHtml).join(', ')}.</div>`;
+          dupHtml = `<div class="dup-note">Mesma chave também encontrada em: ${r.duplicateGroup.map(escapeHtml).join(', ')}. Só uma cópia dessa chave entra em "Copiar todas".</div>`;
         }
         actionsHtml = `<div class="card-actions"><button class="btn-copy" data-key="${r.key}">Copiar chave</button></div>`;
       } else {
         badge = '<span class="badge badge-error">Erro na leitura</span>';
-        keyStripHtml = `<div class="key-strip error">Não foi possível ler uma chave válida nesta imagem. Chaves inexistentes ou com CNPJ/datas inválidas foram descartadas automaticamente.</div>`;
+        keyStripHtml = `<div class="key-strip error">${errorMessage(r)}</div>`;
         actionsHtml = `<div class="card-actions"><button class="btn-copy" disabled>Copiar chave</button></div>`;
       }
 
@@ -802,6 +926,7 @@
             ${badge}
           </div>
           ${keyStripHtml}
+          ${methodHtml}
           ${metaHtml}
           ${dupHtml}
           ${actionsHtml}
@@ -810,10 +935,7 @@
     });
 
     resultsEl.querySelectorAll('.btn-copy[data-key]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        copyText(btn.getAttribute('data-key'));
-        flashCopied(btn);
-      });
+      btn.addEventListener('click', () => { copyText(btn.getAttribute('data-key')); flashCopied(btn); });
     });
   }
 
@@ -837,9 +959,7 @@
       li.innerHTML = `<span>NF-e nº <strong>${nNF}</strong>${r.duplicate ? ' <em>(duplicada)</em>' : ''}</span><span class="fname">${escapeHtml(r.fileName)}</span>`;
       nfeNumbersList.appendChild(li);
     });
-    if (!nfeNumbersList.children.length){
-      nfeNumbersList.innerHTML = '<li>Nenhuma chave validada ainda.</li>';
-    }
+    if (!nfeNumbersList.children.length){ nfeNumbersList.innerHTML = '<li>Nenhuma chave validada ainda.</li>'; }
 
     if (dupCount > 0){
       duplicatesPanel.style.display = 'block';
@@ -850,9 +970,7 @@
         li.innerHTML = `<strong>${formatarChave(key)}</strong><br>Aparece em: ${allNames.map(escapeHtml).join(', ')}`;
         duplicatesList.appendChild(li);
       });
-    } else {
-      duplicatesPanel.style.display = 'none';
-    }
+    } else { duplicatesPanel.style.display = 'none'; }
 
     summary.style.display = 'block';
   }
@@ -860,50 +978,34 @@
   copyAllBtn.addEventListener('click', () => {
     const seen = new Set();
     const lines = [];
-    results.forEach(r => {
-      if (r.status === 'ok' && !seen.has(r.key)){
-        seen.add(r.key);
-        lines.push(r.key);
-      }
-    });
-    if (!lines.length){
-      showToast('Nenhuma chave para copiar.');
-      return;
-    }
+    results.forEach(r => { if (r.status === 'ok' && !seen.has(r.key)){ seen.add(r.key); lines.push(r.key); } });
+    if (!lines.length){ showToast('Nenhuma chave validada para copiar.'); return; }
     copyText(lines.join('\n'));
-    showToast(`${lines.length} chave(s) copiada(s).`);
+    showToast(`${lines.length} chave(s) única(s) copiada(s).`);
   });
 
   function copyText(text){
     if (navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
-    } else {
-      fallbackCopy(text);
-    }
+    } else { fallbackCopy(text); }
   }
   function fallbackCopy(text){
     const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
     try{ document.execCommand('copy'); }catch(e){}
     document.body.removeChild(ta);
   }
   function flashCopied(btn){
     const original = btn.textContent;
-    btn.textContent = 'Copiado ✓';
-    btn.classList.add('copied');
+    btn.textContent = 'Copiado ✓'; btn.classList.add('copied');
     setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1400);
     showToast('Chave copiada.');
   }
   function showToast(msg){
-    toastEl.textContent = msg;
-    toastEl.classList.add('show');
+    toastEl.textContent = msg; toastEl.classList.add('show');
     setTimeout(() => toastEl.classList.remove('show'), 1800);
   }
-
   function escapeHtml(str){
     return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
