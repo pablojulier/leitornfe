@@ -182,7 +182,7 @@
 <header>
   <div class="eyebrow">DANFE · Código de barras · Chave de acesso</div>
   <h1>Leitor de Chaves NF-e</h1>
-  <p class="subtitle"><strong>Em Teste use com cautela*</strong> Envie as imagens das DANFEs. O leitor localiza e extrai as chave de 44 dígitos.</p>
+  <p class="subtitle"><strong>Em Teste use com cautela</strong> Envie as imagens das DANFEs. O leitor localiza e extrai as chave de 44 dígitos.</p>
   </header>
 
 
@@ -233,11 +233,6 @@
 
 <section class="results" id="results"></section>
 
-<section class="method-note">
-  <p><b>Como a chave é localizada:</b> o leitor gira a imagem em vários ângulos (retos e finos, para corrigir fotos levemente tortas) e busca o código de barras Code 128 com a biblioteca ZXing em duas camadas: primeiro uma varredura rápida da imagem inteira; se não achar, uma busca mais lenta e minuciosa em resolução total, priorizando o canto superior direito (posição padrão do código no DANFE), depois o topo inteiro, e por fim a imagem inteira em alta resolução — cobrindo tanto fotos da nota inteira quanto imagens já recortadas apertadas no código de barras. A partir da posição exata do código, recorta só a faixa de dígitos logo abaixo — evitando confundir a chave com CNPJ, datas, valores ou outros números da nota.</p>
-  <p><b>Como a leitura é confirmada:</b> essa faixa recortada é ampliada, convertida para preto e branco (limiar automático) e tem ruído removido, e então passa por dois motores de OCR diferentes. Uma chave só aparece como "validada" se (a) o dígito verificador oficial (módulo 11) bater, (b) os campos da chave forem plausíveis (UF existente, mês entre 01–12, ano entre 2006 e o ano atual, modelo 55 ou 65, tipo de emissão entre 1–9) e (c) não houver conflito entre os dois motores. Se um motor ler algo diferente do outro, ou se a chave "bater" no dígito verificador mas tiver um campo impossível (ano de 2000, mês 13 etc.), a nota vai para "erro" — nunca escolhemos um número no chute.</p>
-  <p><b>Quando o código de barras não é encontrado</b> em nenhuma das camadas de busca (imagem muito cortada, muito escura, etc.), o leitor cai para um plano B: varre a página inteira em busca de uma sequência de 44 dígitos que passe tanto na validação matemática quanto na de plausibilidade, também cruzando Tesseract e OCRAD quando possível. Esse modo é menos preciso que a leitura ancorada no código de barras e fica marcado como tal no resultado.</p>
-</section>
 
 <div class="toast" id="toast"></div>
 
